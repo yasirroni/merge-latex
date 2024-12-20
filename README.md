@@ -4,22 +4,10 @@ Iteratively search for and merge both `\include` and `\input` commands into the 
 
 ## Run locally
 
+Run:
+
+```shell
 uvicorn api.main:app --reload
+```
 
-html on pages/index.html
-
-{
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/main.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/main.py"
-    }
-  ]
-}
+Then the page will be displayed at `http://localhost:8000/` and the swagger at `http://localhost:8000/docs`.
