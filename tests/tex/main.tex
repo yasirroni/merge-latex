@@ -1,0 +1,21 @@
+\documentclass{article}
+\newcommand{\datapath}{data}
+
+\includeonly{%
+    \datapath/include_with_macro,%
+    data/include_without_macro%
+}
+
+\begin{document}
+
+\section{Input with Macro}
+\input{\datapath/input_with_macro.tex}
+
+\section{Input without Macro}
+\input{data/input_without_macro.tex}
+
+\include{\datapath/include_with_macro}
+
+\include{data/include_without_macro}
+
+\end{document}

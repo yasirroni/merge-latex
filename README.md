@@ -2,6 +2,9 @@
 
 Iteratively search for and merge both `\include` and `\input` commands into the main LaTeX file.
 
+> [!WARNING]  
+> Current implementation didn't add new page on `\include` yet.
+
 ## Run locally
 
 Run:

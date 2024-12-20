@@ -11,3 +11,33 @@ temp/
 
 # mac
 .DS_Store
+
+# latex generated file
+*.log
+*.aux
+*.dvi
+*.lof
+*.lot
+*.bit
+*.idx
+*.glo
+*.bbl
+*.bcf
+*.ilg
+*.toc
+*.ind
+*.out
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.nlg
+*.nlo
+*.nls
+*.synctex(busy)
+*.upa
+*.upb
+*.nav
+*.snm
+**/*.pdf
+*.zip

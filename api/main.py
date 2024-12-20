@@ -80,6 +80,7 @@ def expand_includes(content, files, macros, current_path=""):
             new_current_path = os.path.dirname(include_file)
             # Recursively expand includes in the included content
             included_content = expand_includes(included_content, files, macros, new_current_path)
+            # TODO: handle include and input differently, with include adding a new page
             content = content.replace(match.group(0), included_content)
         else:
             print(f"Warning: File {included_path} not found!")
@@ -97,6 +98,16 @@ def merge_tex_files(main_content, files):
 
     return expanded_content
 
+def get_main_file(tex_files):
+    if tex_files.main_file in tex_files.files:
+        return None
+    for k in tex_files.files:
+        if tex_files.main_file in k:
+            tex_files.main_file = k
+            return os.path.dirname(k)
+    tex_files.main_file = None
+    return None
+
 @app.get("/version")
 def read_version():
     version = get_version()
@@ -105,14 +116,30 @@ def read_version():
 @app.post("/merge")
 async def merge_latex(tex_files: TexFiles):
     try:
-        # Get main file content
-        if tex_files.main_file not in tex_files.files:
+        new_dirname = get_main_file(tex_files)
+        if tex_files.main_file is None:
             raise HTTPException(
                 status_code=404,
-                detail=f"Main file {tex_files.main_file} not found.")
+                detail=f"Main file {tex_files.main_file} not found."
+            )
+
+        old_keys = list(tex_files.files.keys())
+        if new_dirname is not None:
+            for k in old_keys:
+                # if k == tex_files.main_file:
+                #     continue
+                new_k = k.replace(new_dirname + '/', '', 1)
+                tex_files.files[new_k] = tex_files.files[k]
+
+        # Get main file content
+        if tex_files.main_file not in tex_files.files:
+            for k in tex_files.files:
+                if tex_files.main_file in k:
+                    tex_files.main_file = k
+                    break
 
         main_content = tex_files.files[tex_files.main_file]
-        
+
         # # Save main file
         # merged_file_path = os.path.join(temp_dir, 'main.tex')
         # with open(merged_file_path, 'w', encoding='utf-8') as f:
@@ -120,7 +147,7 @@ async def merge_latex(tex_files: TexFiles):
 
         # Merge the files
         merged_content = merge_tex_files(main_content, tex_files.files)
-        
+
         # # Save merged file
         # merged_file_path = os.path.join(temp_dir, 'merged.tex')
         # with open(merged_file_path, 'w', encoding='utf-8') as f:
