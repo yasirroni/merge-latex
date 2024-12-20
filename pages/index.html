@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge LaTeX</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .drop-zone {
+            margin: 20px auto;
+            padding: 40px;
+            border: 2px dashed #aaa;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+
+        .drop-zone.hover {
+            border-color: #007bff;
+            background-color: #e6f2ff;
+        }
+
+        #output {
+            margin-top: 20px;
+        }
+
+        .donate {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        #mainFileInput {
+            margin: 10px 0;
+            padding: 5px;
+            width: 200px;
+        }
+
+        #progressBar {
+            width: 100%;
+            background-color: #f0f0f0;
+            margin-top: 10px;
+        }
+
+        #progressBar div {
+            width: 0%;
+            height: 20px;
+            background-color: #4CAF50;
+            transition: width 0.5s;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+
+<body>
+
+    <h1>Merge LaTeX</h1>
+    <p>Iteratively search for and merge both \include and \input commands into the main LaTeX file. Rest assured, no file stored in the server.</p>
+
+    <input type="text" id="mainFileInput" placeholder="Main LaTeX file" value="main.tex">
+
+    <div class="drop-zone" id="drop-zone">
+        Drag and drop a .zip file here
+    </div>
+
+    <div id="progressBar">
+        <div id="progress"></div>
+    </div>
+    <div id="output"></div>
+
+    <div class="donate">
+        <a href="https://ko-fi.com/yasirroni" target="_blank" rel="noopener noreferrer">
+            <img src="https://cdn.ko-fi.com/cdn/kofi3.png?v=3" alt="Buy Me a Coffee" style="height: 36px;">
+        </a>
+        <br>
+        <br>
+        <p>If you like this tool, you may also like <a
+                href="https://github.com/yasirroni/IEEE-Biography-Image-Maker">IEEE Biography Image Maker</a>.
+            <br>
+            Source code available at <a href="https://github.com/yasirroni/merge-latex">merge-latex</a>. Visit my <a
+                href="https://github.com/yasirroni">GitHub</a> to see my other projects.
+        </p>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const output = document.getElementById('output');
+        const mainFileInput = document.getElementById('mainFileInput');
+        const progressBar = document.getElementById('progress');
+
+        // Process ZIP file and extract .tex files
+        async function processZipFile(zipFile) {
+            const zip = new JSZip();
+            const loadedZip = await zip.loadAsync(zipFile);
+
+            const texFiles = new Map();
+            const totalFiles = Object.keys(loadedZip.files).length;
+            let processedCount = 0;
+
+            // Process files and maintain folder structure
+            for (const [filePath, file] of Object.entries(loadedZip.files)) {
+                processedCount++;
+                progressBar.style.width = `${(processedCount / totalFiles) * 100}%`;
+
+                if (file.dir) {
+                    processedCount++;
+                    continue;
+                }
+
+                if (!filePath.toLowerCase().endsWith('.tex')) {
+                    processedCount++;
+                    continue;
+                }
+
+                try {
+                    const content = await file.async('text');
+                    texFiles.set(filePath, content);
+                } catch (error) {
+                    console.error(`Error processing ${filePath}:`, error);
+                }
+            }
+
+            return texFiles;
+        }
+
+        dropZone.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropZone.classList.add('hover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('hover');
+        });
+
+        dropZone.addEventListener('drop', async (event) => {
+            event.preventDefault();
+            dropZone.classList.remove('hover');
+
+            const files = event.dataTransfer.files;
+            if (files.length !== 1 || !files[0].name.endsWith('.zip')) {
+                output.textContent = "Please drop a single .zip file.";
+                return;
+            }
+
+            const zipFile = files[0];
+            const mainFileName = mainFileInput.value || 'main.tex';
+
+            try {
+                progressBar.style.width = '0%';
+                output.textContent = 'Processing...';
+
+                // Process the ZIP file and get .tex files
+                const texFiles = await processZipFile(zipFile);
+
+                // Create an object to hold all file contents
+                const filesData = {};
+                for (const [filePath, content] of texFiles.entries()) {
+                    filesData[filePath] = content;
+                }
+
+                // Send data as JSON
+                const response = await fetch('/merge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        main_file: mainFileName,
+                        files: filesData
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText);
+                }
+
+                const jsonResponse = await response.json();
+                const mergedContent = jsonResponse.merged_content;
+
+                const blob = new Blob([mergedContent], { type: 'text/plain' });
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(blob);
+                downloadLink.download = 'merged.tex';
+                downloadLink.textContent = 'Download Merged File';
+
+                output.innerHTML = "";
+                output.appendChild(downloadLink);
+                progressBar.style.width = '100%';
+            } catch (err) {
+                output.textContent = `Error: ${err.message}`;
+                console.error(err);
+                progressBar.style.width = '0%';
+            }
+        });
+    </script>
+</body>
+
+</html>

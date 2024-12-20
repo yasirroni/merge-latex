@@ -1,0 +1,13 @@
+# env
+env/
+
+# python
+*.pyc
+*.pyo
+__pycache__/
+
+# temp
+temp/
+
+# mac
+.DS_Store
