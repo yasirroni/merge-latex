@@ -30,18 +30,39 @@
 
         #output {
             margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .donate {
-            margin-top: 40px;
-            font-size: 0.9em;
-            color: #666;
+        .flex-textbox {
+            margin-top: 20px;
+            width: 100%;
+            height: 300px;
+            resize: vertical;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
         }
 
-        #mainFileInput {
-            margin: 10px 0;
-            padding: 5px;
-            width: 200px;
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 14px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
         }
 
         #progressBar {
@@ -63,7 +84,8 @@
 <body>
 
     <h1>Merge LaTeX</h1>
-    <p>Iteratively search for and merge both \include and \input commands into the main LaTeX file. Rest assured, no file stored in the server. Current implementation didn't add new page on \include yet.</p>
+    <p>Iteratively search for and merge both \include and \input commands into the main LaTeX file. Rest assured, no
+        file stored in the server. Current implementation didn't add new page on \include yet.</p>
 
     <input type="text" id="mainFileInput" placeholder="Main LaTeX file" value="main.tex">
 
@@ -74,8 +96,16 @@
     <div id="progressBar">
         <div id="progress"></div>
     </div>
-    <div id="output"></div>
 
+    <div id="output">
+        <textarea class="flex-textbox" id="mergedContent" readonly></textarea>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button id="copyButton" disabled>Copy to Clipboard</button>
+            <button id="downloadButton" disabled>Download Merged File</button>
+        </div>
+    </div>
+    <br>
+    <br>
     <div class="donate">
         <a href="https://ko-fi.com/yasirroni" target="_blank" rel="noopener noreferrer">
             <img src="https://cdn.ko-fi.com/cdn/kofi3.png?v=3" alt="Buy Me a Coffee" style="height: 36px;">
@@ -95,8 +125,10 @@
         const output = document.getElementById('output');
         const mainFileInput = document.getElementById('mainFileInput');
         const progressBar = document.getElementById('progress');
+        const mergedContentBox = document.getElementById('mergedContent');
+        const copyButton = document.getElementById('copyButton');
+        const downloadButton = document.getElementById('downloadButton');
 
-        // Process ZIP file and extract .tex files
         async function processZipFile(zipFile) {
             const zip = new JSZip();
             const loadedZip = await zip.loadAsync(zipFile);
@@ -105,18 +137,11 @@
             const totalFiles = Object.keys(loadedZip.files).length;
             let processedCount = 0;
 
-            // Process files and maintain folder structure
             for (const [filePath, file] of Object.entries(loadedZip.files)) {
                 processedCount++;
                 progressBar.style.width = `${(processedCount / totalFiles) * 100}%`;
 
-                if (file.dir) {
-                    processedCount++;
-                    continue;
-                }
-
-                if (!filePath.toLowerCase().endsWith('.tex')) {
-                    processedCount++;
+                if (file.dir || !filePath.toLowerCase().endsWith('.tex')) {
                     continue;
                 }
 
@@ -146,7 +171,7 @@
 
             const files = event.dataTransfer.files;
             if (files.length !== 1 || !files[0].name.endsWith('.zip')) {
-                output.textContent = "Please drop a single .zip file.";
+                mergedContentBox.value = "Please drop a single .zip file.";
                 return;
             }
 
@@ -155,18 +180,15 @@
 
             try {
                 progressBar.style.width = '0%';
-                output.textContent = 'Processing...';
+                mergedContentBox.value = 'Processing...';
 
-                // Process the ZIP file and get .tex files
                 const texFiles = await processZipFile(zipFile);
 
-                // Create an object to hold all file contents
                 const filesData = {};
                 for (const [filePath, content] of texFiles.entries()) {
                     filesData[filePath] = content;
                 }
 
-                // Send data as JSON
                 const response = await fetch('/merge', {
                     method: 'POST',
                     headers: {
@@ -179,28 +201,66 @@
                 });
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(errorText);
+                    throw new Error(await response.text());
                 }
 
                 const jsonResponse = await response.json();
                 const mergedContent = jsonResponse.merged_content;
 
-                const blob = new Blob([mergedContent], { type: 'text/plain' });
-                const downloadLink = document.createElement('a');
-                downloadLink.href = URL.createObjectURL(blob);
-                downloadLink.download = 'merged.tex';
-                downloadLink.textContent = 'Download Merged File';
-
-                output.innerHTML = "";
-                output.appendChild(downloadLink);
+                mergedContentBox.value = mergedContent;
+                mergedContentBox.scrollTop = 0; // Scroll to top
+                downloadButton.disabled = false;
+                copyButton.disabled = false;
                 progressBar.style.width = '100%';
             } catch (err) {
-                output.textContent = `Error: ${err.message}`;
-                console.error(err);
+                mergedContentBox.value = `Error: ${err.message}`;
+                downloadButton.disabled = true;
+                copyButton.disabled = true;
                 progressBar.style.width = '0%';
             }
         });
+
+        downloadButton.addEventListener('click', () => {
+            const mergedContent = document.getElementById('mergedContent').value; // Get the actual content of the textarea
+            const blob = new Blob([mergedContent], { type: 'text/plain' });
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = 'merged.tex';
+            downloadLink.click();
+
+            // Change button text and style to indicate success
+            downloadButton.textContent = '✓ Downloaded!';
+            downloadButton.style.backgroundColor = '#4CAF50'; // Optional: success color
+
+            // Revert back to original after 2 seconds
+            setTimeout(() => {
+                downloadButton.textContent = 'Download Merged File';
+                downloadButton.style.backgroundColor = ''; // Reset to default
+            }, 2000);
+        });
+
+        copyButton.addEventListener('click', () => {
+            mergedContentBox.select();
+            navigator.clipboard.writeText(mergedContentBox.value).then(() => {
+                // Change button text and style to indicate success
+                copyButton.textContent = '✓ Copied!';
+                copyButton.style.backgroundColor = '#4CAF50'; // Optional: success color
+
+                // Revert back to original after 2 seconds
+                setTimeout(() => {
+                    copyButton.textContent = 'Copy to Clipboard';
+                    copyButton.style.backgroundColor = ''; // Reset to default
+                }, 2000);
+            }).catch((err) => {
+                console.error('Failed to copy:', err);
+            });
+        });
+
+
+        // Append both buttons to the output
+        output.appendChild(downloadButton);
+        output.appendChild(copyButton);
+
     </script>
 </body>
 

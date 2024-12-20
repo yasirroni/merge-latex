@@ -41,3 +41,6 @@ temp/
 *.snm
 **/*.pdf
 *.zip
+
+# vercel
+.vercel
