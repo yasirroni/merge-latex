@@ -3,5 +3,5 @@
 ## git clean ignored
 
 ```shell
-git clean -fdX tex/
+git clean -fdX tests/
 ```
