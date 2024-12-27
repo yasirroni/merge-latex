@@ -13,6 +13,7 @@ from pydantic import BaseModel
 class TexFiles(BaseModel):
     main_file: str
     files: Dict[str, str]
+    main_dir: str = ''
 
 app = FastAPI()
 
@@ -44,7 +45,7 @@ def replace_macros_in_path(path, macros):
         path = path.replace(f"\\{macro}", value)
     return path
 
-def expand_includes(content, files, macros, current_path=""):
+def expand_main(content, files, macros, current_path=""):
     """Expand include and input commands in the content."""
     include_pattern = r'\\(?:include|input)\{([^}]+)\}'
     
@@ -53,8 +54,6 @@ def expand_includes(content, files, macros, current_path=""):
         possible_paths = [
             included_path + '.tex',
             included_path,
-            f"src/{included_path}.tex",
-            f"chapters/{included_path}.tex",
             os.path.join(current_path, included_path + '.tex'),
             os.path.join(current_path, included_path)
         ]
@@ -62,8 +61,9 @@ def expand_includes(content, files, macros, current_path=""):
         for path in possible_paths:
             if path in files:
                 return path
-            # Normalize path separators
-            norm_path = path.replace('\\', '/').replace('//', '/')
+
+            # replace path separators and normalize
+            norm_path = os.path.normpath(path.replace('\\', '/'))
             if norm_path in files:
                 return norm_path
         return None
@@ -71,7 +71,10 @@ def expand_includes(content, files, macros, current_path=""):
     while re.search(include_pattern, content):
         match = re.search(include_pattern, content)
         included_path = replace_macros_in_path(match.group(1), macros)
-        
+        included_path = os.path.join(current_path, included_path)
+        # print(f'{current_path = }')
+        # print(f'{included_path = }')
+
         include_file = find_file(included_path)
         
         if include_file:
@@ -79,34 +82,39 @@ def expand_includes(content, files, macros, current_path=""):
             # Update current_path for nested includes
             new_current_path = os.path.dirname(include_file)
             # Recursively expand includes in the included content
-            included_content = expand_includes(included_content, files, macros, new_current_path)
+            included_content = expand_main(included_content, files, macros, new_current_path)
             # TODO: handle include and input differently, with include adding a new page
             content = content.replace(match.group(0), included_content)
         else:
-            print(f"Warning: File {included_path} not found!")
+            # print(f"Warning: File {included_path} not found!")
             content = content.replace(match.group(0), "")
     
     return content
 
-def merge_tex_files(main_content, files):
+def merge_tex_files(main_content, files, main_dir=''):
     """Merge multiple LaTeX files into one."""
     # Extract macros without altering their original definition
     macros = extract_macros(main_content)
 
     # Expand includes while resolving paths with macros
-    expanded_content = expand_includes(main_content, files, macros)
+    expanded_content = expand_main(
+        main_content, files, macros, current_path=main_dir
+    )
 
     return expanded_content
 
 def get_main_file(tex_files):
     if tex_files.main_file in tex_files.files:
-        return None
+        return os.path.dirname(tex_files.main_file)
     for k in tex_files.files:
         if tex_files.main_file in k:
             tex_files.main_file = k
             return os.path.dirname(k)
-    tex_files.main_file = None
-    return None
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Main file {tex_files.main_file} not found."
+    )
 
 @app.get("/version")
 def read_version():
@@ -116,20 +124,19 @@ def read_version():
 @app.post("/merge")
 async def merge_latex(tex_files: TexFiles):
     try:
-        new_dirname = get_main_file(tex_files)
-        if tex_files.main_file is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Main file {tex_files.main_file} not found."
-            )
+        # print(tex_files.main_file)
+        # print(tex_files.files.keys())
+        tex_files.main_dir = get_main_file(tex_files)
+        # print(f'{tex_files.main_dir = }')
 
+        # update keys based in new_dirname
+        # if new_dirname is not None:
         old_keys = list(tex_files.files.keys())
-        if new_dirname is not None:
-            for k in old_keys:
-                # if k == tex_files.main_file:
-                #     continue
-                new_k = k.replace(new_dirname + '/', '', 1)
-                tex_files.files[new_k] = tex_files.files[k]
+        for k in old_keys:
+            # if k == tex_files.main_file:
+            #     continue
+            new_k = k.replace(tex_files.main_dir + '/', '', 1)
+            tex_files.files[new_k] = tex_files.files[k]
 
         # Get main file content
         if tex_files.main_file not in tex_files.files:
@@ -146,7 +153,7 @@ async def merge_latex(tex_files: TexFiles):
         #     f.write(main_content)
 
         # Merge the files
-        merged_content = merge_tex_files(main_content, tex_files.files)
+        merged_content = merge_tex_files(main_content, tex_files.files, tex_files.main_dir)
 
         # # Save merged file
         # merged_file_path = os.path.join(temp_dir, 'merged.tex')
