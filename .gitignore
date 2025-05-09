@@ -4,10 +4,12 @@ env/
 # python
 *.pyc
 *.pyo
+*.egg-info
 __pycache__/
 
 # temp
 temp/
+merged.tex
 
 # mac
 .DS_Store

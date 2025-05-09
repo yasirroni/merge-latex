@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "merge-latex"
+description = "Iteratively search for and merge both include and input commands into the main LaTeX file."
+readme = "README.md"
+requires-python = ">=3.7.1"
+keywords = []
+authors = [
+  {name = "Muhammad Yasirroni", email = "muhammadyasirroni@gmail.com"},
+]
+maintainers = [
+  {name = "Muhammad Yasirroni", email = "muhammadyasirroni@gmail.com"}
+]
+classifiers = [
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = []
+dynamic = ["version"]
+
+[project.scripts]
+merge-latex = "merge_latex.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/yasirroni/merge-latex#readme"
+Issues = "https://github.com/yasirroni/merge-latex/issues"
+Source = "https://github.com/yasirroni/merge-latex"
