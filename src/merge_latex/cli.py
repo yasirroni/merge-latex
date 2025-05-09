@@ -46,14 +46,17 @@ def main():
         "-m",
         type=str,
         default="main.tex",
-        help="Main LaTeX file to use as entry point"
+        help="Main LaTeX file to use as entry point (default: main.tex)"
     )
     parser.add_argument(
         "--output",
         "-o",
         type=str,
-        default="merged.tex",
-        help="Output file path (default: merged.tex)"
+        default="",
+        help=(
+            "Output file path (default: <main>_merged.tex if <source> is a"
+            " directory, else the zip)"
+        )
     )
     parser.add_argument(
         "-v",
@@ -97,9 +100,19 @@ def main():
         merged_content = merge_tex_files(main_content, files, main_dir)
         
         # Write merged content to output file
+        if not args.output:
+            if os.path.isdir(args.source):
+                base, _ = os.path.splitext(os.path.join(args.source, main_file))
+            else:
+                base, _ = os.path.splitext(args.source)
+            args.output = f"{base}_merged.tex"
+
         with open(args.output, 'w', encoding='utf-8') as f:
             f.write(merged_content)
         
+        for i in files.keys():
+            print(i)
+        print(main_file)
         print(f"Merged files successfully into '{args.output}'")
         
     except ValueError as e:
