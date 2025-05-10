@@ -5,9 +5,20 @@ Iteratively search for and merge both `\include` and `\input` commands into the 
 > [!WARNING]  
 > Current implementation didn't add new page on `\include` yet. Will be added if there is request for it.
 
+## Using Command-Line Interface
+
+Various command can be used to run from command-line interface (CLI), for examples:
+
+```shell
+merge-latex path/to/latex/dir
+merge-latex path/to/latex/zip_file.zip
+merge-latex --main main.tex --output merged.tex path/to/latex/dir
+merge-latex --main main.tex --output merged.tex path/to/latex/zip_file.zip
+```
+
 ## Run locally
 
-Run:
+To serve as website as shown in <https://merge-latex.vercel.app/> locally, run:
 
 ```shell
 uvicorn api.main:app --reload
@@ -46,3 +57,11 @@ Source: [GitHub Gist](<https://gist.github.com/yasirroni/c533b78ae59b8a7282a0f64
 }
 \makeatother
 ```
+
+### Support remove comments
+
+### Add test
+
+### Publish PyPI
+
+### Refactor main search to core
