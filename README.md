@@ -5,6 +5,14 @@ Iteratively search for and merge both `\include` and `\input` commands into the 
 > [!WARNING]  
 > Current implementation didn't add new page on `\include` yet. Will be added if there is request for it.
 
+## Installation
+
+From the root directory after downloading this package:
+
+```shell
+pip install .
+```
+
 ## Using Command-Line Interface
 
 Various command can be used to run from command-line interface (CLI), for examples:
